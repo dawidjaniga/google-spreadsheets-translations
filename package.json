@@ -1,0 +1,24 @@
+{
+  "name": "google-spreadsheets-translations",
+  "version": "1.0.0",
+  "description": "Store and easily manage your application's translations keys in Google Spreadsheets",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hevelius/google-spreadsheets-translations.git"
+  },
+  "keywords": [
+    "google",
+    "translations",
+    "spreadsheets"
+  ],
+  "author": "Dawid Janiga <dawidjaniga@gmail.com> (http://dawidjaniga.pl/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hevelius/google-spreadsheets-translations/issues"
+  },
+  "homepage": "https://github.com/hevelius/google-spreadsheets-translations#readme"
+}
