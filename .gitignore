@@ -57,3 +57,11 @@ typings/
 # dotenv environment variables file
 .env
 
+# IntelliJ
+.idea
+
+# secrets
+client_secret.json
+
+# application's store
+store/
