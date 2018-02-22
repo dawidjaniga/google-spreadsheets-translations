@@ -1,11 +1,15 @@
 {
   "name": "google-spreadsheets-translations",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Store and easily manage your application's translations keys in Google Spreadsheets",
   "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "bin": {
+    "trans": "./bin/index.js"
+  },
+  "preferGlobal": true,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/hevelius/google-spreadsheets-translations.git"
