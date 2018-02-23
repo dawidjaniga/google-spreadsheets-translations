@@ -1,6 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const readline = require('readline')
+const opn = require('opn');
 const {google} = require('googleapis')
 const {OAuth2Client} = require('google-auth-library')
 const {flatten, unflatten} = require('flat')
@@ -144,6 +145,7 @@ function getNewToken(oauth2Client) {
     })
 
     console.log('Authorize this app by visiting this url: \n', authUrl)
+    opn(authUrl);
 
     rl.question('Enter the code from that page here: ', (code) => {
       rl.close()
