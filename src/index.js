@@ -3,12 +3,13 @@ const path = require('path')
 const readline = require('readline')
 const {google} = require('googleapis')
 const {OAuth2Client} = require('google-auth-library')
-const {unflatten} = require('flat')
+const {flatten, unflatten} = require('flat')
 const debug = require('debug')('trans')
 const program = require('commander')
+const package = require('./../package')
 
 program
-  .version('0.1.0')
+  .version(package.version, '-v, --version')
   .option('push', 'Push translations')
   .option('pull', 'Pull translations')
   .option('-d, --dir []', 'Translations dir')
@@ -16,15 +17,17 @@ program
 
 const APPLICATION_STORE_DIRNAME = '.sheets-translations'
 const CLIENT_SECRET_FILENAME = 'client_secret.json'
-const TRANSLATIONS_DIR = program.dir
+const TRANSLATIONS_DIR = path.resolve(program.dir)
+debug(TRANSLATIONS_DIR)
 const SPREADSHEET_ID = '1d5SMBsu_a5CtjfK2cvdzPn-w1ONwhMFvDY11--ZfA-s'
-const SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+const SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 const STORE_PATH = path.join(
   (process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE),
   APPLICATION_STORE_DIRNAME
 )
-const TOKEN_PATH = path.join(STORE_PATH, 'sheets.googleapis.com-nodejs-quickstart.json')
+const TOKEN_PATH = path.join(STORE_PATH, 'sheets.googleapis.com-sheets-translations.json')
 const SECRET_FILE_PATH = path.join(STORE_PATH, CLIENT_SECRET_FILENAME)
+const MAIN_LANGUAGE = 'en'
 
 /**
  *
@@ -204,7 +207,7 @@ function pullTranslations(auth) {
       const rows = response.data.values
       const languages = rows.splice(1, 1)[0]
       languages.splice(0, 1)
-      rows.splice(0, 2)
+      rows.splice(0, 1)
       debug('Found languages', languages)
 
       rows.forEach(row => {
@@ -222,6 +225,67 @@ function pullTranslations(auth) {
   })
 }
 
+function pushTranslations(auth) {
+  return new Promise((resolve, reject) => {
+    fs.readdir(TRANSLATIONS_DIR, (err, files) => {
+      const translations = {}
+      debug('Translations files', files)
+      files.forEach(file => {
+        try {
+          const flatTranslation = flatTranslationFile(path.join(TRANSLATIONS_DIR, file))
+          const language = file.split('.').shift()
+          translations[language] = flatTranslation
+        } catch(e) {
+          reject(e)
+        }
+      })
+
+      saveToSheets(auth, translations)
+        .then(resolve)
+        .catch(reject)
+    })
+  })
+}
+
+function flatTranslationFile(filePath) {
+  const file = require(filePath)
+  return flatten(file)
+}
+
+function saveToSheets(auth, translations) {
+  return new Promise((resolve, reject) => {
+    const sheets = google.sheets('v4')
+    const defaultKeyNames = Object.keys(translations[MAIN_LANGUAGE])
+    const keyNames = ['Key Name', ...defaultKeyNames]
+    const languages = Object.keys(translations)
+    const orderedLanguages = [MAIN_LANGUAGE, ...languages.filter(language => language !== MAIN_LANGUAGE)]
+    const preparedTranslations = orderedLanguages
+      .map(language => rewriteLanguage(translations, language, defaultKeyNames)
+      )
+    const values = [ keyNames, ...preparedTranslations]
+    sheets.spreadsheets.values.update({
+      auth: auth,
+      spreadsheetId: SPREADSHEET_ID,
+      valueInputOption: 'USER_ENTERED',
+      range: 'A2',
+      resource: {
+        majorDimension: 'COLUMNS',
+        values
+      }
+    }, (err, response) => {
+      if (err) {
+        reject(new Error(`The API returned an error: ${err}`))
+      }
+      console.log('Languages %s pushed to Google Sheets document', orderedLanguages.join(', '))
+      resolve()
+    })
+  })
+}
+
+function rewriteLanguage(translations, language, defaultKeyNames) {
+  return [language, ...defaultKeyNames.map(key => translations[language][key] || '')]
+}
+
 
 function parseRow(languages, row) {
   const translationKey = row.splice(0, 1)[0]
@@ -236,7 +300,7 @@ function parseRow(languages, row) {
 }
 
 async function saveLanguageTranslation(language, languageObject) {
-  const filePath = path.join(__dirname, TRANSLATIONS_DIR, `${language}.js`)
+  const filePath = path.join(TRANSLATIONS_DIR, `${language}.js`)
   const content =
 `module.exports = ${JSON.stringify(languageObject, null, '  ')}`
   debug('file path', filePath)
