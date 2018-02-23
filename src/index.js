@@ -50,7 +50,11 @@ function readSettings() {
   return new Promise((resolve, reject) => {
     const settings = require(SETTINGS_FILE_PATH)
     const errors = []
-    OPTIONS = {...OPTIONS, ...settings}
+    OPTIONS = {
+      ...OPTIONS,
+      ...settings,
+    }
+    OPTIONS.translationsDir = path.resolve(OPTIONS.translationsDir)
 
     if (!OPTIONS.translationsDir) {
       errors.push(`You have to specify translations dir as "translationsDir" property in your project ${SETTINGS_FILE_NAME}`)
