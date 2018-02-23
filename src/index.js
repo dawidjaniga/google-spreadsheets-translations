@@ -12,14 +12,10 @@ program
   .version(package.version, '-v, --version')
   .option('push', 'Push translations')
   .option('pull', 'Pull translations')
-  .option('-d, --dir []', 'Translations dir')
   .parse(process.argv)
 
 const APPLICATION_STORE_DIRNAME = '.sheets-translations'
 const CLIENT_SECRET_FILENAME = 'client_secret.json'
-const TRANSLATIONS_DIR = path.resolve(program.dir)
-debug(TRANSLATIONS_DIR)
-const SPREADSHEET_ID = '1d5SMBsu_a5CtjfK2cvdzPn-w1ONwhMFvDY11--ZfA-s'
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 const STORE_PATH = path.join(
   (process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE),
@@ -28,26 +24,44 @@ const STORE_PATH = path.join(
 const TOKEN_PATH = path.join(STORE_PATH, 'sheets.googleapis.com-sheets-translations.json')
 const SECRET_FILE_PATH = path.join(STORE_PATH, CLIENT_SECRET_FILENAME)
 const MAIN_LANGUAGE = 'en'
+const SETTINGS_FILE_NAME = '.translations-settings.json'
+const SETTINGS_FILE_PATH = path.resolve(SETTINGS_FILE_NAME)
+let OPTIONS = {
+  translationsDir: '',
+  spreadsheetId: ''
+}
 
 /**
  *
  * Setup
  *
  */
-checkParams()
+readSettings()
   .then(createStore)
   .then(processClientSecrets)
   .then(authorize)
   .then(doAction)
-  .catch(error => console.error(error))
+  .catch(error => console.error(error.message))
 
 /**
- * Check params passed to lib
+ * Read settings from project's settings file
  */
-function checkParams() {
+function readSettings() {
   return new Promise((resolve, reject) => {
-    if (!program.dir) {
-      reject(new Error('You have to specify translations dir with option -d or --dir'))
+    const settings = require(SETTINGS_FILE_PATH)
+    const errors = []
+    OPTIONS = {...OPTIONS, ...settings}
+
+    if (!OPTIONS.translationsDir) {
+      errors.push(`You have to specify translations dir as "translationsDir" property in your project ${SETTINGS_FILE_NAME}`)
+    }
+
+    if (!OPTIONS.spreadsheetId) {
+      errors.push(`You have to specify spreadsheet id as "spreadsheetId" in your project ${SETTINGS_FILE_NAME}`)
+    }
+
+    if (errors.length) {
+      reject(new Error(errors.join('\n')))
     }
 
     resolve()
@@ -198,7 +212,7 @@ function pullTranslations(auth) {
     const sheets = google.sheets('v4')
     sheets.spreadsheets.values.get({
       auth: auth,
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: OPTIONS.spreadsheetId,
       range: 'Sheet1',
     }, (err, response) => {
       if (err) {
@@ -227,12 +241,12 @@ function pullTranslations(auth) {
 
 function pushTranslations(auth) {
   return new Promise((resolve, reject) => {
-    fs.readdir(TRANSLATIONS_DIR, (err, files) => {
+    fs.readdir(OPTIONS.translationsDir, (err, files) => {
       const translations = {}
       debug('Translations files', files)
       files.forEach(file => {
         try {
-          const flatTranslation = flatTranslationFile(path.join(TRANSLATIONS_DIR, file))
+          const flatTranslation = flatTranslationFile(path.join(OPTIONS.translationsDir, file))
           const language = file.split('.').shift()
           translations[language] = flatTranslation
         } catch(e) {
@@ -265,7 +279,7 @@ function saveToSheets(auth, translations) {
     const values = [ keyNames, ...preparedTranslations]
     sheets.spreadsheets.values.update({
       auth: auth,
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: OPTIONS.spreadsheetId,
       valueInputOption: 'USER_ENTERED',
       range: 'A2',
       resource: {
@@ -300,7 +314,7 @@ function parseRow(languages, row) {
 }
 
 async function saveLanguageTranslation(language, languageObject) {
-  const filePath = path.join(TRANSLATIONS_DIR, `${language}.js`)
+  const filePath = path.join(OPTIONS.translationsDir, `${language}.js`)
   const content =
 `module.exports = ${JSON.stringify(languageObject, null, '  ')}`
   debug('file path', filePath)
