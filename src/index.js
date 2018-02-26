@@ -8,6 +8,8 @@ const {flatten, unflatten} = require('flat')
 const debug = require('debug')('trans')
 const program = require('commander')
 const package = require('./../package')
+const prettier = require('prettier')
+const util = require('util')
 
 program
   .version(package.version, '-v, --version')
@@ -321,11 +323,15 @@ function parseRow(languages, row) {
 
 async function saveLanguageTranslation(language, languageObject) {
   const filePath = path.join(OPTIONS.translationsDir, `${language}.js`)
-  const content =
-`module.exports = ${JSON.stringify(languageObject, null, '  ')}`
+  const preparedLanguage = util.inspect(languageObject, { depth: null })
+  const content = `module.exports = ${preparedLanguage}`
   debug('file path', filePath)
+  debug('prepared language', preparedLanguage)
 
-  await fs.writeFile(filePath, content, (err) => {
+  await fs.writeFile(filePath, prettier.format(content, {
+    singleQuote: true,
+    semi: false,
+  }), (err) => {
     if (err) throw err
     console.log(`Language ${language} file has been saved!`)
   })
