@@ -44,7 +44,9 @@ readSettings()
   .then(processClientSecrets)
   .then(authorize)
   .then(doAction)
-  .catch(error => console.error(error.message))
+  .catch(error => {
+    console.error(error.message || error)
+  })
 
 /**
  * Read settings from project's settings file
@@ -69,6 +71,7 @@ function readSettings() {
 
     if (errors.length) {
       reject(new Error(errors.join('\n')))
+      return
     }
 
     resolve()
@@ -80,6 +83,8 @@ function readSettings() {
  */
 function processClientSecrets() {
   return new Promise((resolve, reject) => {
+    debug('Secret file path: ', SECRET_FILE_PATH)
+
     fs.readFile(SECRET_FILE_PATH, (err, content) => {
       if (err) {
         reject(`
@@ -92,6 +97,7 @@ function processClientSecrets() {
         4. Click "Ok" in popup and download client keys.
         5. Move it to ~/${APPLICATION_STORE_DIRNAME} and rename to "${CLIENT_SECRET_FILENAME}
         `)
+        return
       }
 
       debug('Credentials file content: ', content.toString())
@@ -120,6 +126,7 @@ function authorize(credentialsFile) {
         getNewToken(oauth2Client)
           .then(resolve)
           .catch(reject)
+        return
       } else {
         oauth2Client.credentials = JSON.parse(token)
         resolve(oauth2Client)
@@ -155,6 +162,7 @@ function getNewToken(oauth2Client) {
       oauth2Client.getToken(code, (err, token) => {
         if (err) {
           reject(err)
+          return
         }
         oauth2Client.credentials = token
         storeToken(token)
@@ -174,6 +182,7 @@ function createStore() {
     } catch (err) {
       if (err.code !== 'EEXIST') {
         reject(err)
+        return
       }
     }
 
@@ -204,6 +213,7 @@ function doAction(auth) {
       action = pushTranslations
     } else {
       reject(new Error(`Unknown action`))
+      return
     }
 
     action(auth)
@@ -225,7 +235,10 @@ function pullTranslations(auth) {
     }, (err, response) => {
       if (err) {
         reject(new Error(`The API returned an error: ${err}`))
+        return
       }
+
+      debug(response)
       const rows = response.data.values
       const languages = rows.splice(1, 1)[0]
       languages.splice(0, 1)
@@ -259,6 +272,7 @@ function pushTranslations(auth) {
           translations[language] = flatTranslation
         } catch(e) {
           reject(e)
+          return
         }
       })
 
@@ -297,6 +311,7 @@ function saveToSheets(auth, translations) {
     }, (err, response) => {
       if (err) {
         reject(new Error(`The API returned an error: ${err}`))
+        return
       }
       console.log('Languages %s pushed to Google Sheets document', orderedLanguages.join(', '))
       resolve()
