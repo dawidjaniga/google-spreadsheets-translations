@@ -9,6 +9,7 @@ const debug = require('debug')('trans')
 const program = require('commander')
 const package = require('./../package')
 const prettier = require('prettier')
+const sortDeepObjectArrays = require('sort-deep-object-arrays');
 const util = require('util')
 
 program
@@ -238,7 +239,6 @@ function pullTranslations(auth) {
         return
       }
 
-      debug(response)
       const rows = response.data.values
       const languages = rows.splice(1, 1)[0]
       languages.splice(0, 1)
@@ -338,10 +338,12 @@ function parseRow(languages, row) {
 
 async function saveLanguageTranslation(language, languageObject) {
   const filePath = path.join(OPTIONS.translationsDir, `${language}.js`)
-  const preparedLanguage = util.inspect(languageObject, { depth: null })
+  const sortedLanguage = sortDeepObjectArrays(languageObject)
+  const preparedLanguage = util.inspect(sortedLanguage, { depth: null })
   const content = `module.exports = ${preparedLanguage}`
   debug('file path', filePath)
   debug('prepared language', preparedLanguage)
+
 
   await fs.writeFile(filePath, prettier.format(content, {
     singleQuote: true,

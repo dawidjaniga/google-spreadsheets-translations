@@ -2,10 +2,10 @@ module.exports = {
   default: {
     album: {
       add: 'Add',
-      main: 'Welcome',
-      title: 'Album',
       author: 'Author',
-      description: 'Album description'
+      description: 'Album description',
+      main: 'Welcome',
+      title: 'Album'
     }
   }
 }
