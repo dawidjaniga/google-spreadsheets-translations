@@ -211,7 +211,10 @@ function doAction(auth) {
     if (program.pull) {
       action = pullTranslations
     } else if (program.push) {
-      action = pushTranslations
+      console.error(`Deprecated: Add translations via Google Sheets and pull them into project.
+      *** IMPORTANT *** Pull will overwrite your translation files, so add translations to Spreadsheet first.
+      https://docs.google.com/spreadsheets/d/${OPTIONS.spreadsheetId}/edit`)
+      return
     } else {
       reject(new Error(`Unknown action`))
       return
