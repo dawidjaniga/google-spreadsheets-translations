@@ -267,8 +267,11 @@ function pushTranslations(auth) {
       debug('Translations files', files)
       files.forEach(file => {
         try {
-          const flatTranslation = flatTranslationFile(path.join(OPTIONS.translationsDir, file))
           const language = file.split('.').shift()
+          const filePath = path.join(OPTIONS.translationsDir, file)
+          const translationFile = require(filePath)
+          const preparedTranslations = saveLanguageTranslation(language, translationFile)
+          const flatTranslation = flatten(preparedTranslations)
           translations[language] = flatTranslation
         } catch(e) {
           reject(e)
@@ -281,11 +284,6 @@ function pushTranslations(auth) {
         .catch(reject)
     })
   })
-}
-
-function flatTranslationFile(filePath) {
-  const file = require(filePath)
-  return flatten(file)
 }
 
 function saveToSheets(auth, translations) {
