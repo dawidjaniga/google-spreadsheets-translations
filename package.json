@@ -1,6 +1,6 @@
 {
   "name": "google-spreadsheets-translations",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Store and easily manage your application's translations keys in Google Spreadsheets",
   "main": "src/index.js",
   "scripts": {
