@@ -21,7 +21,7 @@ const util = require('util')
 const APPLICATION_STORE_DIRNAME = '.sheets-translations'
 const CLIENT_SECRET_FILENAME = 'client_secret.json'
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-const STORE_PATH = path.join(
+export const STORE_PATH = path.join(
   process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE,
   APPLICATION_STORE_DIRNAME
 )
@@ -185,7 +185,7 @@ function getNewToken (oauth2Client) {
 /**
  * Create application's store
  */
-function createStore () {
+export function createStore () {
   return new Promise((resolve, reject) => {
     try {
       fs.mkdirSync(STORE_PATH)

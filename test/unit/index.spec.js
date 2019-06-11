@@ -4,9 +4,12 @@ import {
   OPTIONS,
   SETTINGS_FILE_NAME,
   SETTINGS_FILE_PATH,
-  readSettings
+  STORE_PATH,
+  readSettings,
+  createStore
 } from './../../src/index'
-
+const fs = require('fs')
+jest.mock('fs')
 describe('index', () => {
   beforeEach(() => {
     jest.resetModules()
@@ -44,6 +47,34 @@ describe('index', () => {
       }
     })
   })
-})
 
-describe()
+  describe('createStore()', () => {
+    const errorMessage = 'Custom error'
+    it('should create store', async () => {
+      await createStore()
+      expect(fs.mkdirSync).toHaveBeenCalledWith(STORE_PATH)
+    })
+
+    it('should reject on error different than directory exists', async () => {
+      try {
+        fs.mkdirSync.mockImplementation(() => {
+          const error = new Error(errorMessage)
+          error.code = 'CUSTOM'
+          throw error
+        })
+        await createStore()
+      } catch (e) {
+        expect(e.message).toEqual(errorMessage)
+      }
+    })
+
+    it('should resolve on directory exists error', async () => {
+      fs.mkdirSync.mockImplementation(() => {
+        const error = new Error(errorMessage)
+        error.code = 'EEXIST'
+        throw error
+      })
+      await expect(createStore()).resolves.toBeUndefined()
+    })
+  })
+})

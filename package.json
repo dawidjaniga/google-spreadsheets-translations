@@ -4,7 +4,8 @@
   "description": "Store and easily manage your application's translations keys in Google Spreadsheets",
   "main": "src/index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "watch": "jest --watch"
   },
   "bin": {
     "trans": "./bin/index.js"
