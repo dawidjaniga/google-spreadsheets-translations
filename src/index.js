@@ -1,73 +1,83 @@
 const fs = require('fs')
 const path = require('path')
 const readline = require('readline')
-const opn = require('opn');
-const {google} = require('googleapis')
-const {OAuth2Client} = require('google-auth-library')
-const {flatten, unflatten} = require('flat')
+const opn = require('opn')
+const { google } = require('googleapis')
+const { OAuth2Client } = require('google-auth-library')
+const { flatten, unflatten } = require('flat')
 const debug = require('debug')('trans')
 const program = require('commander')
-const package = require('./../package')
+const packageInfo = require('./../package')
 const prettier = require('prettier')
-const sortDeepObjectArrays = require('sort-deep-object-arrays');
+const sortDeepObjectArrays = require('sort-deep-object-arrays')
 const util = require('util')
 
-program
-  .version(package.version, '-v, --version')
-  .option('push', 'Push translations')
-  .option('pull', 'Pull translations')
-  .parse(process.argv)
+// program
+//   .version(packageInfo.version, '-v, --version')
+//   .option('push', 'Push translations')
+//   .option('pull', 'Pull translations')
+//   .parse(process.argv)
 
 const APPLICATION_STORE_DIRNAME = '.sheets-translations'
 const CLIENT_SECRET_FILENAME = 'client_secret.json'
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 const STORE_PATH = path.join(
-  (process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE),
+  process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE,
   APPLICATION_STORE_DIRNAME
 )
-const TOKEN_PATH = path.join(STORE_PATH, 'sheets.googleapis.com-sheets-translations.json')
+const TOKEN_PATH = path.join(
+  STORE_PATH,
+  'sheets.googleapis.com-sheets-translations.json'
+)
 const SECRET_FILE_PATH = path.join(STORE_PATH, CLIENT_SECRET_FILENAME)
 const MAIN_LANGUAGE = 'en'
-const SETTINGS_FILE_NAME = '.translations-settings.json'
-const SETTINGS_FILE_PATH = path.resolve(SETTINGS_FILE_NAME)
-let OPTIONS = {
+export const SETTINGS_FILE_NAME = '.translations-settings.json'
+export const SETTINGS_FILE_PATH = path.resolve(SETTINGS_FILE_NAME)
+export let OPTIONS = {
   translationsDir: '',
   spreadsheetId: ''
 }
 
 /**
  *
- * Setup
+ * Run
  *
  */
-readSettings()
-  .then(createStore)
-  .then(processClientSecrets)
-  .then(authorize)
-  .then(doAction)
-  .catch(error => {
-    console.error(error.message || error)
-  })
+export function run () {
+  readSettings()
+    .then(createStore)
+    .then(processClientSecrets)
+    .then(authorize)
+    .then(doAction)
+    .catch(error => {
+      console.error(error.message || error)
+    })
+}
 
 /**
  * Read settings from project's settings file
  */
-function readSettings() {
+export function readSettings () {
   return new Promise((resolve, reject) => {
     const settings = require(SETTINGS_FILE_PATH)
     const errors = []
     OPTIONS = {
       ...OPTIONS,
-      ...settings,
+      ...settings
     }
+    // @TODO: bug - translationsDir is always defined
     OPTIONS.translationsDir = path.resolve(OPTIONS.translationsDir)
 
     if (!OPTIONS.translationsDir) {
-      errors.push(`You have to specify translations dir as "translationsDir" property in your project ${SETTINGS_FILE_NAME}`)
+      errors.push(
+        `You have to specify translations dir as "translationsDir" property in your project ${SETTINGS_FILE_NAME}`
+      )
     }
 
     if (!OPTIONS.spreadsheetId) {
-      errors.push(`You have to specify spreadsheet id as "spreadsheetId" in your project ${SETTINGS_FILE_NAME}`)
+      errors.push(
+        `You have to specify spreadsheet id as "spreadsheetId" in your project ${SETTINGS_FILE_NAME}`
+      )
     }
 
     if (errors.length) {
@@ -82,7 +92,7 @@ function readSettings() {
 /**
  * Parse client secrets
  */
-function processClientSecrets() {
+function processClientSecrets () {
   return new Promise((resolve, reject) => {
     debug('Secret file path: ', SECRET_FILE_PATH)
 
@@ -113,7 +123,7 @@ function processClientSecrets() {
  *
  * @param {Object} credentials The authorization client credentials.
  */
-function authorize(credentialsFile) {
+function authorize (credentialsFile) {
   return new Promise((resolve, reject) => {
     let credentials = credentialsFile.installed || credentialsFile.web
     debug('Credentials: ', credentials)
@@ -127,7 +137,6 @@ function authorize(credentialsFile) {
         getNewToken(oauth2Client)
           .then(resolve)
           .catch(reject)
-        return
       } else {
         oauth2Client.credentials = JSON.parse(token)
         resolve(oauth2Client)
@@ -143,7 +152,7 @@ function authorize(credentialsFile) {
  * @param {google.auth.OAuth2} oauth2Client The OAuth2 client to get token for.
  *     client.
  */
-function getNewToken(oauth2Client) {
+function getNewToken (oauth2Client) {
   return new Promise((resolve, reject) => {
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
@@ -155,9 +164,9 @@ function getNewToken(oauth2Client) {
     })
 
     console.log('Authorize this app by visiting this url: \n', authUrl)
-    opn(authUrl);
+    opn(authUrl)
 
-    rl.question('Enter the code from that page here: ', (code) => {
+    rl.question('Enter the code from that page here: ', code => {
       rl.close()
 
       oauth2Client.getToken(code, (err, token) => {
@@ -176,7 +185,7 @@ function getNewToken(oauth2Client) {
 /**
  * Create application's store
  */
-function createStore() {
+function createStore () {
   return new Promise((resolve, reject) => {
     try {
       fs.mkdirSync(STORE_PATH)
@@ -197,15 +206,14 @@ function createStore() {
  *
  * @param {Object} token The token to store to disk.
  */
-function storeToken(token) {
+function storeToken (token) {
   fs.writeFile(TOKEN_PATH, JSON.stringify(token))
   console.log('Token stored to ' + TOKEN_PATH)
 }
 
-
 const translations = {}
 
-function doAction(auth) {
+function doAction (auth) {
   return new Promise((resolve, reject) => {
     let action
     if (program.pull) {
@@ -229,41 +237,44 @@ function doAction(auth) {
  * Print the names and majors of students in a sample spreadsheet:
  * https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
  */
-function pullTranslations(auth) {
+function pullTranslations (auth) {
   return new Promise((resolve, reject) => {
     const sheets = google.sheets('v4')
-    sheets.spreadsheets.values.get({
-      auth: auth,
-      spreadsheetId: OPTIONS.spreadsheetId,
-      range: 'Sheet1',
-    }, (err, response) => {
-      if (err) {
-        reject(new Error(`The API returned an error: ${err}`))
-        return
+    sheets.spreadsheets.values.get(
+      {
+        auth: auth,
+        spreadsheetId: OPTIONS.spreadsheetId,
+        range: 'Sheet1'
+      },
+      (err, response) => {
+        if (err) {
+          reject(new Error(`The API returned an error: ${err}`))
+          return
+        }
+
+        const rows = response.data.values
+        const languages = rows.splice(1, 1)[0]
+        languages.splice(0, 1)
+        rows.splice(0, 1)
+        debug('Found languages', languages)
+
+        rows.forEach(row => {
+          parseRow(languages, row)
+        })
+
+        const flattenTranslations = unflatten(translations)
+
+        Object.keys(flattenTranslations).forEach(language => {
+          saveLanguageTranslation(language, flattenTranslations[language])
+        })
+
+        resolve()
       }
-
-      const rows = response.data.values
-      const languages = rows.splice(1, 1)[0]
-      languages.splice(0, 1)
-      rows.splice(0, 1)
-      debug('Found languages', languages)
-
-      rows.forEach(row => {
-        parseRow(languages, row)
-      })
-
-      const flattenTranslations = unflatten(translations)
-
-      Object.keys(flattenTranslations).forEach(language => {
-        saveLanguageTranslation(language, flattenTranslations[language])
-      })
-
-      resolve()
-    })
+    )
   })
 }
 
-function pushTranslations(auth) {
+function pushTranslations (auth) {
   return new Promise((resolve, reject) => {
     fs.readdir(OPTIONS.translationsDir, (err, files) => {
       const translations = {}
@@ -273,12 +284,14 @@ function pushTranslations(auth) {
           const language = file.split('.').shift()
           const filePath = path.join(OPTIONS.translationsDir, file)
           const translationFile = require(filePath)
-          const preparedTranslations = saveLanguageTranslation(language, translationFile)
+          const preparedTranslations = saveLanguageTranslation(
+            language,
+            translationFile
+          )
           const flatTranslation = flatten(preparedTranslations)
           translations[language] = flatTranslation
-        } catch(e) {
+        } catch (e) {
           reject(e)
-          return
         }
       })
 
@@ -289,43 +302,54 @@ function pushTranslations(auth) {
   })
 }
 
-function saveToSheets(auth, translations) {
+function saveToSheets (auth, translations) {
   return new Promise((resolve, reject) => {
     const sheets = google.sheets('v4')
     const defaultKeyNames = Object.keys(translations[MAIN_LANGUAGE])
     const keyNames = ['Key Name', ...defaultKeyNames]
     const languages = Object.keys(translations)
-    const orderedLanguages = [MAIN_LANGUAGE, ...languages.filter(language => language !== MAIN_LANGUAGE)]
-    const preparedTranslations = orderedLanguages
-      .map(language => rewriteLanguage(translations, language, defaultKeyNames)
-      )
-    const values = [ keyNames, ...preparedTranslations]
-    sheets.spreadsheets.values.update({
-      auth: auth,
-      spreadsheetId: OPTIONS.spreadsheetId,
-      valueInputOption: 'USER_ENTERED',
-      range: 'A2',
-      resource: {
-        majorDimension: 'COLUMNS',
-        values
+    const orderedLanguages = [
+      MAIN_LANGUAGE,
+      ...languages.filter(language => language !== MAIN_LANGUAGE)
+    ]
+    const preparedTranslations = orderedLanguages.map(language =>
+      rewriteLanguage(translations, language, defaultKeyNames)
+    )
+    const values = [keyNames, ...preparedTranslations]
+    sheets.spreadsheets.values.update(
+      {
+        auth: auth,
+        spreadsheetId: OPTIONS.spreadsheetId,
+        valueInputOption: 'USER_ENTERED',
+        range: 'A2',
+        resource: {
+          majorDimension: 'COLUMNS',
+          values
+        }
+      },
+      (err, response) => {
+        if (err) {
+          reject(new Error(`The API returned an error: ${err}`))
+          return
+        }
+        console.log(
+          'Languages %s pushed to Google Sheets document',
+          orderedLanguages.join(', ')
+        )
+        resolve()
       }
-    }, (err, response) => {
-      if (err) {
-        reject(new Error(`The API returned an error: ${err}`))
-        return
-      }
-      console.log('Languages %s pushed to Google Sheets document', orderedLanguages.join(', '))
-      resolve()
-    })
+    )
   })
 }
 
-function rewriteLanguage(translations, language, defaultKeyNames) {
-  return [language, ...defaultKeyNames.map(key => translations[language][key] || '')]
+function rewriteLanguage (translations, language, defaultKeyNames) {
+  return [
+    language,
+    ...defaultKeyNames.map(key => translations[language][key] || '')
+  ]
 }
 
-
-function parseRow(languages, row) {
+function parseRow (languages, row) {
   const translationKey = row.splice(0, 1)[0]
   row.forEach((row, i) => {
     const language = languages[i]
@@ -337,7 +361,7 @@ function parseRow(languages, row) {
   })
 }
 
-async function saveLanguageTranslation(language, languageObject) {
+async function saveLanguageTranslation (language, languageObject) {
   const filePath = path.join(OPTIONS.translationsDir, `${language}.js`)
   const sortedLanguage = sortDeepObjectArrays(languageObject)
   const preparedLanguage = util.inspect(sortedLanguage, { depth: null })
@@ -345,12 +369,15 @@ async function saveLanguageTranslation(language, languageObject) {
   debug('file path', filePath)
   debug('prepared language', preparedLanguage)
 
-
-  await fs.writeFile(filePath, prettier.format(content, {
-    singleQuote: true,
-    semi: false,
-  }), (err) => {
-    if (err) throw err
-    console.log(`Language ${language} file has been saved!`)
-  })
+  await fs.writeFile(
+    filePath,
+    prettier.format(content, {
+      singleQuote: true,
+      semi: false
+    }),
+    err => {
+      if (err) throw err
+      console.log(`Language ${language} file has been saved!`)
+    }
+  )
 }
