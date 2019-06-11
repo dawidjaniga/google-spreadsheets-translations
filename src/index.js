@@ -4,7 +4,7 @@ const readline = require('readline')
 const opn = require('opn')
 const { google } = require('googleapis')
 const { OAuth2Client } = require('google-auth-library')
-const { flatten, unflatten } = require('flat')
+const { unflatten } = require('flat')
 const debug = require('debug')('trans')
 const program = require('commander')
 const packageInfo = require('./../package')
@@ -14,7 +14,6 @@ const util = require('util')
 
 // program
 //   .version(packageInfo.version, '-v, --version')
-//   .option('push', 'Push translations')
 //   .option('pull', 'Pull translations')
 //   .parse(process.argv)
 
@@ -218,11 +217,6 @@ function doAction (auth) {
     let action
     if (program.pull) {
       action = pullTranslations
-    } else if (program.push) {
-      console.error(`Deprecated: Add translations via Google Sheets and pull them into project.
-      *** IMPORTANT *** Pull will overwrite your translation files, so add translations to Spreadsheet first.
-      https://docs.google.com/spreadsheets/d/${OPTIONS.spreadsheetId}/edit`)
-      return
     } else {
       reject(new Error(`Unknown action`))
       return
@@ -233,10 +227,7 @@ function doAction (auth) {
       .catch(reject)
   })
 }
-/**
- * Print the names and majors of students in a sample spreadsheet:
- * https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
- */
+
 function pullTranslations (auth) {
   return new Promise((resolve, reject) => {
     const sheets = google.sheets('v4')
@@ -272,81 +263,6 @@ function pullTranslations (auth) {
       }
     )
   })
-}
-
-function pushTranslations (auth) {
-  return new Promise((resolve, reject) => {
-    fs.readdir(OPTIONS.translationsDir, (err, files) => {
-      const translations = {}
-      debug('Translations files', files)
-      files.forEach(file => {
-        try {
-          const language = file.split('.').shift()
-          const filePath = path.join(OPTIONS.translationsDir, file)
-          const translationFile = require(filePath)
-          const preparedTranslations = saveLanguageTranslation(
-            language,
-            translationFile
-          )
-          const flatTranslation = flatten(preparedTranslations)
-          translations[language] = flatTranslation
-        } catch (e) {
-          reject(e)
-        }
-      })
-
-      saveToSheets(auth, translations)
-        .then(resolve)
-        .catch(reject)
-    })
-  })
-}
-
-function saveToSheets (auth, translations) {
-  return new Promise((resolve, reject) => {
-    const sheets = google.sheets('v4')
-    const defaultKeyNames = Object.keys(translations[MAIN_LANGUAGE])
-    const keyNames = ['Key Name', ...defaultKeyNames]
-    const languages = Object.keys(translations)
-    const orderedLanguages = [
-      MAIN_LANGUAGE,
-      ...languages.filter(language => language !== MAIN_LANGUAGE)
-    ]
-    const preparedTranslations = orderedLanguages.map(language =>
-      rewriteLanguage(translations, language, defaultKeyNames)
-    )
-    const values = [keyNames, ...preparedTranslations]
-    sheets.spreadsheets.values.update(
-      {
-        auth: auth,
-        spreadsheetId: OPTIONS.spreadsheetId,
-        valueInputOption: 'USER_ENTERED',
-        range: 'A2',
-        resource: {
-          majorDimension: 'COLUMNS',
-          values
-        }
-      },
-      (err, response) => {
-        if (err) {
-          reject(new Error(`The API returned an error: ${err}`))
-          return
-        }
-        console.log(
-          'Languages %s pushed to Google Sheets document',
-          orderedLanguages.join(', ')
-        )
-        resolve()
-      }
-    )
-  })
-}
-
-function rewriteLanguage (translations, language, defaultKeyNames) {
-  return [
-    language,
-    ...defaultKeyNames.map(key => translations[language][key] || '')
-  ]
 }
 
 function parseRow (languages, row) {
