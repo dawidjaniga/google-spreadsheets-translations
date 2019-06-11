@@ -11,7 +11,7 @@ describe('index', () => {
   beforeEach(() => {
     jest.resetModules()
   })
-  describe('read settings', () => {
+  describe('readSettings()', () => {
     it('should have empty options', () => {
       expect(OPTIONS.translationsDir).toEqual('')
       expect(OPTIONS.spreadsheetId).toEqual('')
