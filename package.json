@@ -29,7 +29,7 @@
   "dependencies": {
     "commander": "2.20.0",
     "debug": "4.1.1",
-    "flat": "4.1.0",
+    "flat": "5.0.1",
     "google-auth-library": "4.2.2",
     "googleapis": "40.0.0",
     "opn": "6.0.0",
